@@ -191,7 +191,6 @@ def operate_on_bulb(idx, method, params):
     if not bulb_idx2ip.has_key(idx):
         print "error: invalid bulb idx"
         return
-
     bulb_ip=bulb_idx2ip[idx]
     port=detected_bulbs[bulb_ip][5]
     try:
@@ -210,7 +209,8 @@ def operate_on_bulb(idx, method, params):
 
 
 def set_power(idx, action):
-    params = str(action) + "smooth, 500"
+    params = str(action) + ", smooth, 500"
+    print params
     operate_on_bulb(idx, "set_power", params=params)
 
 
@@ -254,7 +254,8 @@ def customCallback(client, userdata, message):
     elif event == "set_power":
         try:
             i = int(float(1))
-            set_power(i)
+            print i
+            set_power(i, action)
         except:
             print "error in set power"
     elif event == "bright":
