@@ -1,7 +1,5 @@
 #!/usr/bin/python
-
 import socket
-import time
 import fcntl
 import re
 import os
@@ -9,7 +7,11 @@ import errno
 import struct
 from threading import Thread
 from time import sleep
-from collections import OrderedDict
+import logging
+import sys
+import json
+from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
+
 
 detected_bulbs = {}
 bulb_idx2ip = {}
@@ -26,14 +28,43 @@ fcntl.fcntl(listen_socket, fcntl.F_SETFL, os.O_NONBLOCK)
 mreq = struct.pack("4sl", socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
 listen_socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
+# Configure logging
+logger = None
+if sys.version_info[0] == 3:
+    logger = logging.getLogger("core")  # Python 3
+else:
+    logger = logging.getLogger("AWSIoTPythonSDK.core")  # Python 2
+logger.setLevel(logging.DEBUG)
+streamHandler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+streamHandler.setFormatter(formatter)
+logger.addHandler(streamHandler)
+
+# Init AWSIoTMQTTClient
+
+myAWSIoTMQTTClient = AWSIoTMQTTClient("alexa_light")
+myAWSIoTMQTTClient.configureEndpoint("a3d2g35udo4lz5.iot.us-east-1.amazonaws.com", 8883)
+myAWSIoTMQTTClient.configureCredentials("cert/rootCA.pem", "cert/737a0f3c55-private.pem.key",
+                                        "cert/737a0f3c55-certificate.pem.crt")
+
+# AWSIoTMQTTClient connection configuration
+myAWSIoTMQTTClient.configureAutoReconnectBackoffTime(1, 32, 20)
+myAWSIoTMQTTClient.configureOfflinePublishQueueing(-1)  # Infinite offline Publish queueing
+myAWSIoTMQTTClient.configureDrainingFrequency(2)  # Draining: 2 Hz
+myAWSIoTMQTTClient.configureConnectDisconnectTimeout(10)  # 10 sec
+myAWSIoTMQTTClient.configureMQTTOperationTimeout(5)  # 5 sec
+
+
 def debug(msg):
     if DEBUGGING:
         print msg
+
 
 def next_cmd_id():
     global current_command_id
     current_command_id += 1
     return current_command_id
+
 
 def send_search_broadcast():
     '''
@@ -46,6 +77,7 @@ def send_search_broadcast():
     msg = msg + "MAN: \"ssdp:discover\"\r\n"
     msg = msg + "ST: wifi_bulb"
     scan_socket.sendto(msg, multicase_address)
+
 
 def bulbs_detection_loop():
     '''
@@ -91,16 +123,17 @@ def bulbs_detection_loop():
     scan_socket.close()
     listen_socket.close()
 
+
 def get_param_value(data, param):
     '''
     match line of 'param = value'
     '''
     param_re = re.compile(param+":\s*([ -~]*)") #match all printable characters
     match = param_re.search(data)
-    value=""
     if match != None:
         value = match.group(1)
         return value
+
 
 def handle_search_response(data):
     '''
@@ -127,6 +160,7 @@ def handle_search_response(data):
     detected_bulbs[host_ip] = [bulb_id, model, power, bright, rgb, host_port]
     bulb_idx2ip[bulb_id] = host_ip
 
+
 def display_bulb(idx):
     if not bulb_idx2ip.has_key(idx):
         print "error: invalid bulb idx"
@@ -141,10 +175,12 @@ def display_bulb(idx):
           +",power=" + power + ",bright=" \
           + bright + ",rgb=" + rgb
 
+
 def display_bulbs():
     print str(len(detected_bulbs)) + " managed bulbs"
     for i in range(1, len(detected_bulbs)+1):
         display_bulb(i)
+
 
 def operate_on_bulb(idx, method, params):
     '''
@@ -164,92 +200,90 @@ def operate_on_bulb(idx, method, params):
         tcp_socket.connect((bulb_ip, int(port)))
         msg="{\"id\":" + str(next_cmd_id()) + ",\"method\":\""
         msg += method + "\",\"params\":[" + params + "]}\r\n"
+        print "#########################"
+        print msg
+        print "#########################"
         tcp_socket.send(msg)
         tcp_socket.close()
     except Exception as e:
         print "Unexpected error:", e
 
+
+def set_power(idx, action):
+    params = str(action) + "smooth, 500"
+    operate_on_bulb(idx, "set_power", params=params)
+
+
 def toggle_bulb(idx):
     operate_on_bulb(idx, "toggle", "")
+
 
 def set_bright(idx, bright):
     operate_on_bulb(idx, "set_bright", str(bright))
 
-def print_cli_usage():
-    print "Usage:"
-    print "  q|quit: quit bulb manager"
-    print "  h|help: print this message"
-    print "  t|toggle <idx>: toggle bulb indicated by idx"
-    print "  b|bright <idx> <bright>: set brightness of bulb with label <idx>"
-    print "  r|refresh: refresh bulb list"
-    print "  l|list: lsit all managed bulbs"
 
-def handle_user_input():
-    '''
-    User interaction loop.
-    '''
+def subscribe():
+    # Connect and subscribe to AWS IoT
+    myAWSIoTMQTTClient.connect()
+    myAWSIoTMQTTClient.subscribe("$aws/things/alexa_light/shadow/update", 1, customCallback)
     while True:
-        command_line = raw_input("Enter a command: ")
-        valid_cli=True
-        debug("command_line=" + command_line)
-        command_line.lower() # convert all user input to lower case, i.e. cli is caseless
-        argv = command_line.split() # i.e. don't allow parameters with space characters
-        if len(argv) == 0:
-            continue
-        if argv[0] == "q" or argv[0] == "quit":
-            print "Bye!"
-            return
-        elif argv[0] == "l" or argv[0] == "list":
-            display_bulbs()
-        elif argv[0] == "r" or argv[0] == "refresh":
-            detected_bulbs.clear()
-            bulb_idx2ip.clear()
-            send_search_broadcast()
-            #sleep(0.5)
-            #display_bulbs()
-        elif argv[0] == "h" or argv[0] == "help":
-            print_cli_usage()
-            continue
-        elif argv[0] == "t" or argv[0] == "toggle":
-            if len(argv) != 2:
-                valid_cli=False
-            else:
-                try:
-                    i = int(float(argv[1]))
-                    toggle_bulb(i)
-                except:
-                    valid_cli=False
-        elif argv[0] == "b" or argv[0] == "bright":
-            if len(argv) != 3:
-                print "incorrect argc"
-                valid_cli=False
-            else:
-                try:
-                    idx = int(float(argv[1]))
-                    print "idx", idx
-                    bright = int(float(argv[2]))
-                    print "bright", bright
-                    set_bright(idx, bright)
-                except:
-                    valid_cli=False
-        else:
-            valid_cli=False
+        pass
 
-        if not valid_cli:
-            print "error: invalid command line:", command_line
-            print_cli_usage()
+
+# Custom MQTT message callback
+def customCallback(client, userdata, message):
+    print("Received a new message: ")
+
+    msg = json.loads(str(message.payload))
+
+    event = msg['event']
+    action = msg['action']
+
+    if event == "list":
+        display_bulbs()
+    elif event == "refresh":
+        detected_bulbs.clear()
+        bulb_idx2ip.clear()
+        send_search_broadcast()
+    elif event == "toggle":
+        try:
+            i = int(float(1))
+            toggle_bulb(i)
+        except:
+            print "error in toggle"
+    elif event == "set_power":
+        try:
+            i = int(float(1))
+            set_power(i)
+        except:
+            print "error in set power"
+    elif event == "bright":
+        try:
+            idx = int(float(1))
+            print "idx", idx
+            bright = int(float(action))
+            print "bright", bright
+            set_bright(idx, bright)
+        except:
+            print "error in set bright"
+    else:
+        print "error in parse event"
+
+    print("event: " + event)
+    print("action: " + action)
+    print("--------------\n\n")
+
 
 ## main starts here
 # print welcome message first
-print "Welcome to Yeelight WifiBulb Lan controller"
-print_cli_usage
+print "Welcome to Yeelight WifiBulb Lan controller with Alexa"
 # start the bulb detection thread
 detection_thread = Thread(target=bulbs_detection_loop)
 detection_thread.start()
 # give detection thread some time to collect bulb info
 sleep(0.2)
 # user interaction loop
-handle_user_input()
+subscribe()
 # user interaction end, tell detection thread to quit and wait
 RUNNING = False
 detection_thread.join()

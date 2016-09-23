@@ -149,3 +149,6 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Ignore cert
+cert/*

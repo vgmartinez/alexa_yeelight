@@ -1,8 +1,6 @@
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 import sys
 import logging
-import time
-import getopt
 
 # Custom MQTT message callback
 def customCallback(client, userdata, message):
@@ -12,75 +10,12 @@ def customCallback(client, userdata, message):
     print(message.topic)
     print("--------------\n\n")
 
-# Usage
-usageInfo = """Usage:
-Use certificate based mutual authentication:
-python basicPubSub.py -e <endpoint> -r <rootCAFilePath> -c <certFilePath> -k <privateKeyFilePath>
-Use MQTT over WebSocket:
-python basicPubSub.py -e <endpoint> -r <rootCAFilePath> -w
-Type "python basicPubSub.py -h" for available options.
-"""
-# Help info
-helpInfo = """-e, --endpoint
-	Your AWS IoT custom endpoint
--r, --rootCA
-	Root CA file path
--c, --cert
-	Certificate file path
--k, --key
-	Private key file path
--w, --websocket
-	Use MQTT over WebSocket
--h, --help
-	Help information
-"""
-
-# Read in command-line parameters
-useWebsocket = False
-host = ""
-rootCAPath = ""
-certificatePath = ""
-privateKeyPath = ""
-try:
-    opts, args = getopt.getopt(sys.argv[1:], "hwe:k:c:r:", ["help", "endpoint=", "key=","cert=","rootCA=", "websocket"])
-    if len(opts) == 0:
-        raise getopt.GetoptError("No input parameters!")
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print(helpInfo)
-            exit(0)
-        if opt in ("-e", "--endpoint"):
-            host = arg
-        if opt in ("-r", "--rootCA"):
-            rootCAPath = arg
-        if opt in ("-c", "--cert"):
-            certificatePath = arg
-        if opt in ("-k", "--key"):
-            privateKeyPath = arg
-        if opt in ("-w", "--websocket"):
-            useWebsocket = True
-except getopt.GetoptError:
-    print(usageInfo)
-    exit(1)
-
-# Missing configuration notification
-missingConfiguration = False
-if not host:
-    print("Missing '-e' or '--endpoint'")
-    missingConfiguration = True
-if not rootCAPath:
-    print("Missing '-r' or '--rootCA'")
-    missingConfiguration = True
-if not useWebsocket:
-    if not certificatePath:
-        print("Missing '-c' or '--cert'")
-        missingConfiguration = True
-    if not privateKeyPath:
-        print("Missing '-k' or '--key'")
-        missingConfiguration = True
-if missingConfiguration:
-    exit(2)
-
+def subscribe():
+    # Connect and subscribe to AWS IoT
+    myAWSIoTMQTTClient.connect()
+    myAWSIoTMQTTClient.subscribe("$aws/things/alexa_light/shadow/update", 1, customCallback)
+    while True:
+        pass
 # Configure logging
 logger = None
 if sys.version_info[0] == 3:
@@ -94,15 +29,10 @@ streamHandler.setFormatter(formatter)
 logger.addHandler(streamHandler)
 
 # Init AWSIoTMQTTClient
-myAWSIoTMQTTClient = None
-if useWebsocket:
-    myAWSIoTMQTTClient = AWSIoTMQTTClient("basicPubSub", useWebsocket=True)
-    myAWSIoTMQTTClient.configureEndpoint(host, 443)
-    myAWSIoTMQTTClient.configureCredentials(rootCAPath)
-else:
-    myAWSIoTMQTTClient = AWSIoTMQTTClient("basicPubSub")
-    myAWSIoTMQTTClient.configureEndpoint(host, 8883)
-    myAWSIoTMQTTClient.configureCredentials(rootCAPath, privateKeyPath, certificatePath)
+
+myAWSIoTMQTTClient = AWSIoTMQTTClient("alexa_light")
+myAWSIoTMQTTClient.configureEndpoint("a3d2g35udo4lz5.iot.us-east-1.amazonaws.com", 8883)
+myAWSIoTMQTTClient.configureCredentials("cert/rootCA.pem", "cert/737a0f3c55-private.pem.key", "cert/737a0f3c55-certificate.pem.crt")
 
 # AWSIoTMQTTClient connection configuration
 myAWSIoTMQTTClient.configureAutoReconnectBackoffTime(1, 32, 20)
@@ -110,15 +40,6 @@ myAWSIoTMQTTClient.configureOfflinePublishQueueing(-1)  # Infinite offline Publi
 myAWSIoTMQTTClient.configureDrainingFrequency(2)  # Draining: 2 Hz
 myAWSIoTMQTTClient.configureConnectDisconnectTimeout(10)  # 10 sec
 myAWSIoTMQTTClient.configureMQTTOperationTimeout(5)  # 5 sec
+subscribe()
 
-# Connect and subscribe to AWS IoT
-myAWSIoTMQTTClient.connect()
-myAWSIoTMQTTClient.subscribe("sdk/test/Python", 1, customCallback)
-time.sleep(2)
 
-# Publish to the same topic in a loop forever
-loopCount = 0
-while True:
-    myAWSIoTMQTTClient.publish("sdk/test/Python", "New Message " + str(loopCount), 1)
-    loopCount += 1
-    time.sleep(1)
