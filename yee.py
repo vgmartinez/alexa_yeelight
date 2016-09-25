@@ -49,7 +49,7 @@ myAWSIoTMQTTClient.configureCredentials("cert/rootCA.pem", "cert/737a0f3c55-priv
 
 # AWSIoTMQTTClient connection configuration
 myAWSIoTMQTTClient.configureAutoReconnectBackoffTime(1, 32, 20)
-myAWSIoTMQTTClient.configureOfflinePublishQueueing(-1)  # Infinite offline Publish queueing
+#myAWSIoTMQTTClient.configureOfflinePublishQueueing(-1)  # Infinite offline Publish queueing
 myAWSIoTMQTTClient.configureDrainingFrequency(2)  # Draining: 2 Hz
 myAWSIoTMQTTClient.configureConnectDisconnectTimeout(10)  # 10 sec
 myAWSIoTMQTTClient.configureMQTTOperationTimeout(5)  # 5 sec
@@ -209,7 +209,7 @@ def operate_on_bulb(idx, method, params):
 
 
 def set_power(idx, action):
-    params = str(action) + ", smooth, 500"
+    params = '"' + str(action) + '"' + ', "smooth", 500'
     print params
     operate_on_bulb(idx, "set_power", params=params)
 
