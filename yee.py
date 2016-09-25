@@ -256,8 +256,8 @@ def customCallback(client, userdata, message):
             i = int(float(1))
             print i
             set_power(i, action)
-        except:
-            print "error in set power"
+        except Exception as e:
+            print "Unexpected error in set power: ", e
     elif event == "bright":
         try:
             idx = int(float(1))
