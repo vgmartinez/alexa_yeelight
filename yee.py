@@ -34,7 +34,7 @@ if sys.version_info[0] == 3:
     logger = logging.getLogger("core")  # Python 3
 else:
     logger = logging.getLogger("AWSIoTPythonSDK.core")  # Python 2
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 streamHandler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 streamHandler.setFormatter(formatter)
