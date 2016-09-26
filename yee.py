@@ -57,7 +57,7 @@ myAWSIoTMQTTClient.configureMQTTOperationTimeout(5)  # 5 sec
 
 def debug(msg):
     if DEBUGGING:
-        print msg
+        logging.info(msg)
 
 
 def next_cmd_id():
@@ -101,7 +101,7 @@ def bulbs_detection_loop():
                 if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
                     break
                 else:
-                    print e
+                    logging.error(e)
                     sys.exit(1)
             handle_search_response(data)
 
@@ -114,7 +114,7 @@ def bulbs_detection_loop():
                 if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
                     break
                 else:
-                    print e
+                    logging.error(e)
                     sys.exit(1)
             handle_search_response(data)
 
@@ -163,21 +163,21 @@ def handle_search_response(data):
 
 def display_bulb(idx):
     if not bulb_idx2ip.has_key(idx):
-        print "error: invalid bulb idx"
+        logging.error("error: invalid bulb idx")
         return
     bulb_ip = bulb_idx2ip[idx]
     model = detected_bulbs[bulb_ip][1]
     power = detected_bulbs[bulb_ip][2]
     bright = detected_bulbs[bulb_ip][3]
     rgb = detected_bulbs[bulb_ip][4]
-    print str(idx) + ": ip=" \
+    logging.info(str(idx) + ": ip=" \
           +bulb_ip + ",model=" + model \
           +",power=" + power + ",bright=" \
-          + bright + ",rgb=" + rgb
+          + bright + ",rgb=" + rgb)
 
 
 def display_bulbs():
-    print str(len(detected_bulbs)) + " managed bulbs"
+    logging.info(str(len(detected_bulbs)) + " managed bulbs")
     for i in range(1, len(detected_bulbs)+1):
         display_bulb(i)
 
@@ -189,7 +189,7 @@ def operate_on_bulb(idx, method, params):
     E.g. params="1"; params="\"smooth\"", params="1,\"smooth\",80"
     '''
     if not bulb_idx2ip.has_key(idx):
-        print "error: invalid bulb idx"
+        logging.error("error: invalid bulb idx")
         return
     bulb_ip=bulb_idx2ip[idx]
     port=detected_bulbs[bulb_ip][5]
@@ -199,18 +199,16 @@ def operate_on_bulb(idx, method, params):
         tcp_socket.connect((bulb_ip, int(port)))
         msg="{\"id\":" + str(next_cmd_id()) + ",\"method\":\""
         msg += method + "\",\"params\":[" + params + "]}\r\n"
-        print "#########################"
-        print msg
-        print "#########################"
+        logging.info(msg)
         tcp_socket.send(msg)
         tcp_socket.close()
     except Exception as e:
-        print "Unexpected error:", e
+        logging.error("Unexpected error:", e)
 
 
 def set_power(idx, action):
     params = '"' + str(action) + '"' + ', "smooth", 500'
-    print params
+    logging.info(params)
     operate_on_bulb(idx, "set_power", params=params)
 
 
@@ -250,14 +248,14 @@ def customCallback(client, userdata, message):
             i = int(float(1))
             toggle_bulb(i)
         except:
-            print "error in toggle"
+            logging.error("error in toggle")
     elif event == "set_power":
         try:
             i = int(float(1))
             print i
             set_power(i, action)
         except Exception as e:
-            print "Unexpected error in set power: ", e
+            logging.error("Unexpected error in set power: ", e)
     elif event == "bright":
         try:
             idx = int(float(1))
@@ -266,18 +264,18 @@ def customCallback(client, userdata, message):
             print "bright", bright
             set_bright(idx, bright)
         except:
-            print "error in set bright"
+            logging.error("error in set bright")
     else:
-        print "error in parse event"
+        logging.error("error in parse event")
 
-    print("event: " + event)
-    print("action: " + action)
-    print("--------------\n\n")
+    logging.info("event: " + event)
+    logging.info("action: " + action)
+    logging.info("--------------\n\n")
 
 
 ## main starts here
 # print welcome message first
-print "Welcome to Yeelight WifiBulb Lan controller with Alexa"
+logging.info("Welcome to Yeelight WifiBulb Lan controller with Alexa")
 # start the bulb detection thread
 detection_thread = Thread(target=bulbs_detection_loop)
 detection_thread.start()

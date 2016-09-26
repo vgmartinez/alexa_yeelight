@@ -98,6 +98,7 @@ def on_intent(intent_request, session, myAWSIoTMQTTClient):
 
     # Dispatch to your skill's intent handlers
     if intent_name == "TurnTheLigths":
+        print(intent)
         return turn_the_ligths(intent, session, myAWSIoTMQTTClient)
     elif intent_name == "AMAZON.HelpIntent":
         return get_welcome_response()
@@ -162,7 +163,8 @@ def publish(msg, myAWSIoTMQTTClient):
 def turn_the_ligths(intent, session, myAWSIoTMQTTClient):
     session_attributes = {}
     reprompt_text = None
-    
+
+    status = ''
     if 'State' in intent['slots']:
         status = intent['slots']['State']['value']
     if status == 'on' or status == 'off': 
