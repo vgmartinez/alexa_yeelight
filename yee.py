@@ -42,10 +42,9 @@ logger.addHandler(streamHandler)
 
 # Init AWSIoTMQTTClient
 
-myAWSIoTMQTTClient = AWSIoTMQTTClient("alexa_light_subs")
-myAWSIoTMQTTClient.configureEndpoint("a3d2g35udo4lz5.iot.us-east-1.amazonaws.com", 8883)
-myAWSIoTMQTTClient.configureCredentials("cert/rootCA.pem", "cert/737a0f3c55-private.pem.key",
-                                        "cert/737a0f3c55-certificate.pem.crt")
+myAWSIoTMQTTClient = AWSIoTMQTTClient("alexa_light_subs", useWebsocket=True)
+myAWSIoTMQTTClient.configureEndpoint("a3d2g35udo4lz5.iot.us-east-1.amazonaws.com", 443)
+myAWSIoTMQTTClient.configureCredentials("cert/rootCA.pem")
 
 # AWSIoTMQTTClient connection configuration
 myAWSIoTMQTTClient.configureAutoReconnectBackoffTime(1, 32, 20)
@@ -225,7 +224,7 @@ def set_rgb(idx, action):
 def subscribe():
     # Connect and subscribe to AWS IoT
     myAWSIoTMQTTClient.connect()
-    myAWSIoTMQTTClient.subscribe("/yee/light", 1, customCallback)
+    myAWSIoTMQTTClient.subscribe("/yee/light", 0, customCallback)
     while True:
         pass
 

@@ -31,10 +31,9 @@ def lambda_handler(event, context):
     logger.addHandler(streamHandler)
 
 
-    myAWSIoTMQTTClient = AWSIoTMQTTClient("alexa_light_pub")
-    myAWSIoTMQTTClient.configureEndpoint("a3d2g35udo4lz5.iot.us-east-1.amazonaws.com", 8883)
-    myAWSIoTMQTTClient.configureCredentials("cert/rootCA.pem", "cert/737a0f3c55-private.pem.key",
-                                                "cert/737a0f3c55-certificate.pem.crt")
+    myAWSIoTMQTTClient = AWSIoTMQTTClient("alexa_light_pub", useWebsocket=True)
+    myAWSIoTMQTTClient.configureEndpoint("a3d2g35udo4lz5.iot.us-east-1.amazonaws.com", 443)
+    myAWSIoTMQTTClient.configureCredentials("cert/rootCA.pem")
 
     # AWSIoTMQTTClient connection configuration
     myAWSIoTMQTTClient.configureAutoReconnectBackoffTime(1, 32, 20)
@@ -154,7 +153,7 @@ def create_favorite_color_attributes(favorite_color):
 def publish(msg, myAWSIoTMQTTClient):
     print(msg)
     myAWSIoTMQTTClient.connect()
-    myAWSIoTMQTTClient.publish("/yee/light", str(msg), 1)
+    myAWSIoTMQTTClient.publish("/yee/light", str(msg), 0)
 
 
 def turn_the_ligths(intent, session, myAWSIoTMQTTClient):
@@ -165,19 +164,27 @@ def turn_the_ligths(intent, session, myAWSIoTMQTTClient):
     if 'State' in intent['slots']:
         status = intent['slots']['State']['value']
 
-    print status
     if status == 'off':
         msg = '{"event": "set_power", "action": "off"}'
+        print(msg)
         publish(msg, myAWSIoTMQTTClient)
         speech_output = "Putting the lights off."
         should_end_session = True
     elif status == 'red':
         msg = '{"event": "set_rgb", "action": "15209235"}'
+        print(msg)
         publish(msg, myAWSIoTMQTTClient)
         speech_output = "Putting the lights red."
         should_end_session = True
+    elif status == 'white':
+        msg = '{"event": "set_rgb", "action": "16777215"}'
+        print(msg)
+        publish(msg, myAWSIoTMQTTClient)
+        speech_output = "Putting the lights white."
+        should_end_session = True
     elif status == 'on':
         msg = '{"event": "set_power", "action": "on"}'
+        print(msg)
         publish(msg, myAWSIoTMQTTClient)
         speech_output = "Putting the lights on."
         should_end_session = True
