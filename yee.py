@@ -42,7 +42,7 @@ logger.addHandler(streamHandler)
 
 # Init AWSIoTMQTTClient
 
-myAWSIoTMQTTClient = AWSIoTMQTTClient("alexa_light")
+myAWSIoTMQTTClient = AWSIoTMQTTClient("alexa_light_subs")
 myAWSIoTMQTTClient.configureEndpoint("a3d2g35udo4lz5.iot.us-east-1.amazonaws.com", 8883)
 myAWSIoTMQTTClient.configureCredentials("cert/rootCA.pem", "cert/737a0f3c55-private.pem.key",
                                         "cert/737a0f3c55-certificate.pem.crt")
@@ -225,7 +225,7 @@ def set_bright(idx, bright):
 def subscribe():
     # Connect and subscribe to AWS IoT
     myAWSIoTMQTTClient.connect()
-    myAWSIoTMQTTClient.subscribe("/me/light", 1, customCallback)
+    myAWSIoTMQTTClient.subscribe("/yee/light", 1, customCallback)
     while True:
         pass
 
