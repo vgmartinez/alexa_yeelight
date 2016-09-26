@@ -225,7 +225,7 @@ def set_bright(idx, bright):
 def subscribe():
     # Connect and subscribe to AWS IoT
     myAWSIoTMQTTClient.connect()
-    myAWSIoTMQTTClient.subscribe("$aws/things/alexa_light/shadow/update", 1, customCallback)
+    myAWSIoTMQTTClient.subscribe("/me/light", 1, customCallback)
     while True:
         pass
 

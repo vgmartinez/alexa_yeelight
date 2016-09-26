@@ -156,7 +156,7 @@ def create_favorite_color_attributes(favorite_color):
 def publish(msg, myAWSIoTMQTTClient):
     print(msg)
     myAWSIoTMQTTClient.connect()
-    myAWSIoTMQTTClient.publish("$aws/things/alexa_light/shadow/update", str(msg), 1)
+    myAWSIoTMQTTClient.publish("/me/light", str(msg), 1)
 
 
 def turn_the_ligths(intent, session, myAWSIoTMQTTClient):
