@@ -24,7 +24,7 @@ def lambda_handler(event, context):
         logger = logging.getLogger("core")  # Python 3
     else:
         logger = logging.getLogger("AWSIoTPythonSDK.core")  # Python 2
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     streamHandler = logging.StreamHandler()
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     streamHandler.setFormatter(formatter)
@@ -127,14 +127,11 @@ def get_welcome_response():
 
     session_attributes = {}
     card_title = "Welcome"
-    speech_output = "Welcome to the Alexa Skills Kit sample. " \
-                    "Please tell me if you want to turn on the ligths "
+    speech_output = "Hi baby, tell me the color you want"
     
     # If the user either does not reply to the welcome message or says something
     # that is not understood, they will be prompted again with this text.
-    reprompt_text = "Please tell me if you want to turn on the ligths  " \
-                    "by saying, "\
-                    "Turn on the ligths"
+    reprompt_text = "Please tell me white, red or blue"
     should_end_session = False
     return build_response(session_attributes, build_speechlet_response(
         card_title, speech_output, reprompt_text, should_end_session))
@@ -167,10 +164,22 @@ def turn_the_ligths(intent, session, myAWSIoTMQTTClient):
     status = ''
     if 'State' in intent['slots']:
         status = intent['slots']['State']['value']
-    if status == 'on' or status == 'off': 
-        msg = '{"event": "set_power", "action": "' + status + '"}'
+
+    print status
+    if status == 'off':
+        msg = '{"event": "set_power", "action": "off"}'
         publish(msg, myAWSIoTMQTTClient)
-        speech_output = "The ligths are turn " + status + "."
+        speech_output = "Putting the lights off."
+        should_end_session = True
+    elif status == 'red':
+        msg = '{"event": "set_rgb", "action": "15209235"}'
+        publish(msg, myAWSIoTMQTTClient)
+        speech_output = "Putting the lights red."
+        should_end_session = True
+    elif status == 'on':
+        msg = '{"event": "set_power", "action": "on"}'
+        publish(msg, myAWSIoTMQTTClient)
+        speech_output = "Putting the lights on."
         should_end_session = True
     else:
         speech_output = "I'm not sure"

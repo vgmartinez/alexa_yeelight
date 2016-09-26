@@ -34,7 +34,7 @@ if sys.version_info[0] == 3:
     logger = logging.getLogger("core")  # Python 3
 else:
     logger = logging.getLogger("AWSIoTPythonSDK.core")  # Python 2
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 streamHandler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 streamHandler.setFormatter(formatter)
@@ -211,14 +211,16 @@ def set_power(idx, action):
     logging.info(params)
     operate_on_bulb(idx, "set_power", params=params)
 
-
 def toggle_bulb(idx):
     operate_on_bulb(idx, "toggle", "")
-
 
 def set_bright(idx, bright):
     operate_on_bulb(idx, "set_bright", str(bright))
 
+def set_rgb(idx, action):
+    params = '{}, "smooth", 500'.format(action)
+    print params
+    operate_on_bulb(idx, "set_rgb", params=params)
 
 def subscribe():
     # Connect and subscribe to AWS IoT
@@ -226,7 +228,6 @@ def subscribe():
     myAWSIoTMQTTClient.subscribe("/yee/light", 1, customCallback)
     while True:
         pass
-
 
 # Custom MQTT message callback
 def customCallback(client, userdata, message):
@@ -248,14 +249,14 @@ def customCallback(client, userdata, message):
             i = int(float(1))
             toggle_bulb(i)
         except:
-            logging.error("error in toggle")
+            print("error in toggle")
     elif event == "set_power":
         try:
             i = int(float(1))
             print i
             set_power(i, action)
         except Exception as e:
-            logging.error("Unexpected error in set power: ", e)
+            print("Unexpected error in set power: ", e)
     elif event == "bright":
         try:
             idx = int(float(1))
@@ -264,7 +265,13 @@ def customCallback(client, userdata, message):
             print "bright", bright
             set_bright(idx, bright)
         except:
-            logging.error("error in set bright")
+            print("error in set bright")
+    elif event == "set_rgb":
+        try:
+            i = int(float(1))
+            set_rgb(i, action)
+        except Exception as e:
+            print("error in set color: ", str(e))
     else:
         logging.error("error in parse event")
 
