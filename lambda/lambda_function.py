@@ -9,40 +9,13 @@ http://amzn.to/1LGWsLG
 
 from __future__ import print_function
 import ssl
-from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
-import logging
-import sys
-
+import paho.mqtt.client as paho
+import paho.mqtt.publish as publish
 
 def lambda_handler(event, context):
     """ Route the incoming request based on type (LaunchRequest, IntentRequest,
     etc.) The JSON body of the request is provided in the event parameter.
     """
-
-    logger = None
-    if sys.version_info[0] == 3:
-        logger = logging.getLogger("core")  # Python 3
-    else:
-        logger = logging.getLogger("AWSIoTPythonSDK.core")  # Python 2
-    logger.setLevel(logging.INFO)
-    streamHandler = logging.StreamHandler()
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    streamHandler.setFormatter(formatter)
-    logger.addHandler(streamHandler)
-
-
-    myAWSIoTMQTTClient = AWSIoTMQTTClient("alexa_light_pub", useWebsocket=True)
-    myAWSIoTMQTTClient.configureEndpoint("a3d2g35udo4lz5.iot.eu-west-1.amazonaws.com", 443)
-    myAWSIoTMQTTClient.configureCredentials("cert/rootCA.pem")
-
-    # AWSIoTMQTTClient connection configuration
-    myAWSIoTMQTTClient.configureAutoReconnectBackoffTime(1, 32, 20)
-    myAWSIoTMQTTClient.configureOfflinePublishQueueing(-1)  # Infinite offline Publish queueing
-    myAWSIoTMQTTClient.configureDrainingFrequency(2)  # Draining: 2 Hz
-    myAWSIoTMQTTClient.configureConnectDisconnectTimeout(10)  # 10 sec
-    myAWSIoTMQTTClient.configureMQTTOperationTimeout(5)  # 5 sec
-
-    
 
     print("event.session.application.applicationId=" +
           event['session']['application']['applicationId'])
@@ -63,7 +36,7 @@ def lambda_handler(event, context):
     if event['request']['type'] == "LaunchRequest":
         return on_launch(event['request'], event['session'])
     elif event['request']['type'] == "IntentRequest":
-        return on_intent(event['request'], event['session'], myAWSIoTMQTTClient)
+        return on_intent(event['request'], event['session'])
     elif event['request']['type'] == "SessionEndedRequest":
         return on_session_ended(event['request'], event['session'])
 
@@ -86,7 +59,7 @@ def on_launch(launch_request, session):
     return get_welcome_response()
 
 
-def on_intent(intent_request, session, myAWSIoTMQTTClient):
+def on_intent(intent_request, session):
     """ Called when the user specifies an intent for this skill """
 
     print("on_intent requestId=" + intent_request['requestId'] +
@@ -96,9 +69,10 @@ def on_intent(intent_request, session, myAWSIoTMQTTClient):
     intent_name = intent_request['intent']['name']
 
     # Dispatch to your skill's intent handlers
-    if intent_name == "TurnTheLigths":
-        print(intent)
-        return turn_the_ligths(intent, session, myAWSIoTMQTTClient)
+    if intent_name == "TurnLigth":
+        return turn_ligth(intent, session)
+    elif intent_name == "SetColorLight":
+        return set_color_light(intent, session)
     elif intent_name == "AMAZON.HelpIntent":
         return get_welcome_response()
     elif intent_name == "AMAZON.CancelIntent" or intent_name == "AMAZON.StopIntent":
@@ -150,13 +124,62 @@ def create_favorite_color_attributes(favorite_color):
     return {"favoriteColor": favorite_color}
 
 
-def publish(msg, myAWSIoTMQTTClient):
-    print(msg)
-    myAWSIoTMQTTClient.connect()
-    myAWSIoTMQTTClient.publish("/yee/light", str(msg), 0)
+def publish_to_topic(msg):
+    try:
+        tls_set = {
+            "ca_certs":"cert/rootCA.pem",
+            "certfile": "cert/3325692202-certificate.pem.crt",
+            "keyfile": "cert/3325692202-private.pem.key",
+            "tls_version": ssl.PROTOCOL_SSLv23,
+            "ciphers": None
+        }
+
+        publish.single("/yee/light", payload=msg, qos=1,
+                       hostname="A3D2G35UDO4LZ5.iot.eu-west-1.amazonaws.com",
+                       port=8883, tls=tls_set, protocol=paho.MQTTv31, )
+    except Exception as e:
+        print(e)
 
 
-def turn_the_ligths(intent, session, myAWSIoTMQTTClient):
+def set_color_light(intent, session):
+    session_attributes = {}
+    reprompt_text = None
+
+    status = ''
+    if 'Color' in intent['slots']:
+        status = intent['slots']['Color']['value']
+    if status == 'red':
+        msg = '{"event": "set_rgb", "action": "15209235"}'
+        print(msg)
+        publish_to_topic(msg)
+        speech_output = "Putting the lights red."
+        should_end_session = True
+    elif status == 'white':
+        msg = '{"event": "set_rgb", "action": "16777215"}'
+        print(msg)
+        publish_to_topic(msg)
+        speech_output = "Putting the lights white."
+        should_end_session = True
+    elif status == 'blue':
+        msg = '{"event": "set_rgb", "action": "1315046"}'
+        print(msg)
+        publish_to_topic(msg)
+        speech_output = "Putting the lights blue."
+        should_end_session = True
+    elif status == 'yellow':
+        msg = '{"event": "set_rgb", "action": "14149136"}'
+        print(msg)
+        publish_to_topic(msg)
+        speech_output = "Putting the lights yellow."
+        should_end_session = True
+    else:
+        speech_output = "I'm not sure"
+        should_end_session = False
+    return build_response(session_attributes, build_speechlet_response(
+        intent['name'], speech_output, reprompt_text, should_end_session))
+
+
+def turn_ligth(intent, session):
     session_attributes = {}
     reprompt_text = None
 
@@ -167,41 +190,24 @@ def turn_the_ligths(intent, session, myAWSIoTMQTTClient):
     if status == 'off':
         msg = '{"event": "set_power", "action": "off"}'
         print(msg)
-        publish(msg, myAWSIoTMQTTClient)
+        publish_to_topic(msg)
         speech_output = "Putting the lights off."
-        should_end_session = True
-    elif status == 'red':
-        msg = '{"event": "set_rgb", "action": "15209235"}'
-        print(msg)
-        publish(msg, myAWSIoTMQTTClient)
-        speech_output = "Putting the lights red."
-        should_end_session = True
-    elif status == 'white':
-        msg = '{"event": "set_rgb", "action": "16777215"}'
-        print(msg)
-        publish(msg, myAWSIoTMQTTClient)
-        speech_output = "Putting the lights white."
         should_end_session = True
     elif status == 'on':
         msg = '{"event": "set_power", "action": "on"}'
         print(msg)
-        publish(msg, myAWSIoTMQTTClient)
+        publish_to_topic(msg)
         speech_output = "Putting the lights on."
         should_end_session = True
     else:
         speech_output = "I'm not sure"
         should_end_session = False
 
-    # Setting reprompt_text to None signifies that we do not want to reprompt
-    # the user. If the user does not respond or says something that is not
-    # understood, the session will end.
     return build_response(session_attributes, build_speechlet_response(
         intent['name'], speech_output, reprompt_text, should_end_session))
     
 
-
 # --------------- Helpers that build all of the responses ----------------------
-
 
 def build_speechlet_response(title, output, reprompt_text, should_end_session):
     return {
