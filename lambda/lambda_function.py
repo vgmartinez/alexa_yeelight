@@ -32,7 +32,7 @@ def lambda_handler(event, context):
 
 
     myAWSIoTMQTTClient = AWSIoTMQTTClient("alexa_light_pub", useWebsocket=True)
-    myAWSIoTMQTTClient.configureEndpoint("a3d2g35udo4lz5.iot.us-east-1.amazonaws.com", 443)
+    myAWSIoTMQTTClient.configureEndpoint("a3d2g35udo4lz5.iot.eu-west-1.amazonaws.com", 443)
     myAWSIoTMQTTClient.configureCredentials("cert/rootCA.pem")
 
     # AWSIoTMQTTClient connection configuration
