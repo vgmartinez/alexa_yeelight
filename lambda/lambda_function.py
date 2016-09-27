@@ -12,6 +12,7 @@ import ssl
 import paho.mqtt.client as paho
 import paho.mqtt.publish as publish
 
+
 def lambda_handler(event, context):
     """ Route the incoming request based on type (LaunchRequest, IntentRequest,
     etc.) The JSON body of the request is provided in the event parameter.
@@ -52,11 +53,8 @@ def on_launch(launch_request, session):
     """ Called when the user launches the skill without specifying what they
     want
     """
-
     print("on_launch requestId=" + launch_request['requestId'] +
           ", sessionId=" + session['sessionId'])
-    # Dispatch to your skill's launch
-    return get_welcome_response()
 
 
 def on_intent(intent_request, session):
@@ -99,8 +97,8 @@ def get_welcome_response():
     """
 
     session_attributes = {}
-    card_title = "Welcome"
-    speech_output = "Hi baby, tell me the color you want"
+    card_title = "Yeelight"
+    speech_output = "Hi baby, tell me"
     
     # If the user either does not reply to the welcome message or says something
     # that is not understood, they will be prompted again with this text.
@@ -120,16 +118,12 @@ def handle_session_end_request():
         card_title, speech_output, None, should_end_session))
 
 
-def create_favorite_color_attributes(favorite_color):
-    return {"favoriteColor": favorite_color}
-
-
 def publish_to_topic(msg):
     try:
         tls_set = {
-            "ca_certs":"cert/rootCA.pem",
-            "certfile": "cert/3325692202-certificate.pem.crt",
-            "keyfile": "cert/3325692202-private.pem.key",
+            "ca_certs": "cert/rootCA.pem",
+            "certfile": "cert/841dbd710a-certificate.pem.crt",
+            "keyfile": "cert/841dbd710a-private.pem.key",
             "tls_version": ssl.PROTOCOL_SSLv23,
             "ciphers": None
         }
@@ -142,35 +136,20 @@ def publish_to_topic(msg):
 
 
 def set_color_light(intent, session):
+    colors = {
+        "red": "15209235",
+        "blue": "1315046",
+        "white": "16777215",
+        "yellow": "14149136"
+    }
     session_attributes = {}
     reprompt_text = None
 
-    status = ''
     if 'Color' in intent['slots']:
         status = intent['slots']['Color']['value']
-    if status == 'red':
-        msg = '{"event": "set_rgb", "action": "15209235"}'
-        print(msg)
+        msg = '{"event": "set_rgb", "action": "' + colors[status] + '"}'
         publish_to_topic(msg)
-        speech_output = "Putting the lights red."
-        should_end_session = True
-    elif status == 'white':
-        msg = '{"event": "set_rgb", "action": "16777215"}'
-        print(msg)
-        publish_to_topic(msg)
-        speech_output = "Putting the lights white."
-        should_end_session = True
-    elif status == 'blue':
-        msg = '{"event": "set_rgb", "action": "1315046"}'
-        print(msg)
-        publish_to_topic(msg)
-        speech_output = "Putting the lights blue."
-        should_end_session = True
-    elif status == 'yellow':
-        msg = '{"event": "set_rgb", "action": "14149136"}'
-        print(msg)
-        publish_to_topic(msg)
-        speech_output = "Putting the lights yellow."
+        speech_output = "Putting the light {}.".format(status)
         should_end_session = True
     else:
         speech_output = "I'm not sure"
@@ -183,21 +162,11 @@ def turn_ligth(intent, session):
     session_attributes = {}
     reprompt_text = None
 
-    status = ''
     if 'State' in intent['slots']:
         status = intent['slots']['State']['value']
-
-    if status == 'off':
-        msg = '{"event": "set_power", "action": "off"}'
-        print(msg)
+        msg = '{"event": "set_power", "action": "' + status + '"}'
         publish_to_topic(msg)
-        speech_output = "Putting the lights off."
-        should_end_session = True
-    elif status == 'on':
-        msg = '{"event": "set_power", "action": "on"}'
-        print(msg)
-        publish_to_topic(msg)
-        speech_output = "Putting the lights on."
+        speech_output = "Putting the light {}.".format(status)
         should_end_session = True
     else:
         speech_output = "I'm not sure"
