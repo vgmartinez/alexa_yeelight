@@ -71,8 +71,10 @@ def on_intent(intent_request, session):
         return turn_ligth(intent, intent_name)
     elif intent_name == "SetColorLight":
         return set_color_light(intent, session)
-    elif intent_name == "CrazyLight":
+    elif intent_name == "StartCrazyLight":
         return set_crazy_light(intent, intent_name)
+    elif intent_name == "StopCrazyLight":
+        return stop_crazy_light(intent, intent_name)
     elif intent_name == "AMAZON.HelpIntent":
         return get_welcome_response()
     elif intent_name == "AMAZON.CancelIntent" or intent_name == "AMAZON.StopIntent":
@@ -166,7 +168,23 @@ def set_crazy_light(intent, intent_name):
     if 'CrazyLight' in intent_name:
         msg = '{"event": "start_cf", "action": "1000, 2, 2700, 100, 500, 1,255, 10, 500, 2, 5000, 1"}'
         publish_to_topic(msg)
-        speech_output = "Putting the light on."
+        speech_output = "Putting the light crazy."
+        should_end_session = True
+    else:
+        speech_output = "I'm not sure"
+        should_end_session = False
+
+    return build_response(session_attributes, build_speechlet_response(
+        intent['name'], speech_output, reprompt_text, should_end_session))
+
+def stop_crazy_light(intent, intent_name):
+    session_attributes = {}
+    reprompt_text = None
+
+    if 'StopCrazyLight' in intent_name:
+        msg = '{"event": "stop_cf", "action": "off"}'
+        publish_to_topic(msg)
+        speech_output = "Stop crazy ligth."
         should_end_session = True
     else:
         speech_output = "I'm not sure"
