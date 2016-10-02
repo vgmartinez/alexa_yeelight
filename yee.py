@@ -243,9 +243,7 @@ def customCallback(client, userdata, message):
 
     event = msg['event']
     action = msg['action']
-    print event
-    logging.error(event)
-    logging.error(action)
+
     if event == "list":
         display_bulbs()
     elif event == "refresh":
