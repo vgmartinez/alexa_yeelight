@@ -2,6 +2,7 @@
 # Created by https://www.gitignore.io/api/idea,intellij,python
 
 #!! ERROR: idea is undefined. Use list command to see defined gitignore types !!#
+yeelight_control.zip
 
 ### Intellij ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and Webstorm
