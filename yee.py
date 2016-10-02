@@ -210,6 +210,11 @@ def set_power(idx, action):
     logging.info(params)
     operate_on_bulb(idx, "set_power", params=params)
 
+def set_crazy(idx, action):
+    params = '4, 2, "' + str(action) + '"'
+    logging.info(params)
+    operate_on_bulb(idx, "start_cf", params=params)
+
 def toggle_bulb(idx):
     operate_on_bulb(idx, "toggle", "")
 
@@ -252,16 +257,19 @@ def customCallback(client, userdata, message):
     elif event == "set_power":
         try:
             i = int(float(1))
-            print i
             set_power(i, action)
+        except Exception as e:
+            print("Unexpected error in set power: ", e)
+    elif event == "start_cf":
+        try:
+            i = int(float(1))
+            set_crazy(i, action)
         except Exception as e:
             print("Unexpected error in set power: ", e)
     elif event == "bright":
         try:
             idx = int(float(1))
-            print "idx", idx
             bright = int(float(action))
-            print "bright", bright
             set_bright(idx, bright)
         except:
             print("error in set bright")

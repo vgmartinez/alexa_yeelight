@@ -12,6 +12,7 @@ import ssl
 import paho.mqtt.client as paho
 import paho.mqtt.publish as publish
 
+
 def lambda_handler(event, context):
     """ Route the incoming request based on type (LaunchRequest, IntentRequest,
     etc.) The JSON body of the request is provided in the event parameter.
@@ -52,12 +53,9 @@ def on_launch(launch_request, session):
     """ Called when the user launches the skill without specifying what they
     want
     """
-
     print("on_launch requestId=" + launch_request['requestId'] +
           ", sessionId=" + session['sessionId'])
-    # Dispatch to your skill's launch
     return get_welcome_response()
-
 
 def on_intent(intent_request, session):
     """ Called when the user specifies an intent for this skill """
@@ -69,8 +67,8 @@ def on_intent(intent_request, session):
     intent_name = intent_request['intent']['name']
 
     # Dispatch to your skill's intent handlers
-    if intent_name == "TurnLigth":
-        return turn_ligth(intent, session)
+    if intent_name == "TurnOnLigth" or intent_name == "TurnOffLigth":
+        return turn_ligth(intent, intent_name)
     elif intent_name == "SetColorLight":
         return set_color_light(intent, session)
     elif intent_name == "AMAZON.HelpIntent":
@@ -99,8 +97,8 @@ def get_welcome_response():
     """
 
     session_attributes = {}
-    card_title = "Welcome"
-    speech_output = "Hi baby, tell me the color you want"
+    card_title = "Yeelight"
+    speech_output = "Hi baby, tell me"
     
     # If the user either does not reply to the welcome message or says something
     # that is not understood, they will be prompted again with this text.
@@ -120,16 +118,12 @@ def handle_session_end_request():
         card_title, speech_output, None, should_end_session))
 
 
-def create_favorite_color_attributes(favorite_color):
-    return {"favoriteColor": favorite_color}
-
-
 def publish_to_topic(msg):
     try:
         tls_set = {
-            "ca_certs":"cert/rootCA.pem",
-            "certfile": "cert/3325692202-certificate.pem.crt",
-            "keyfile": "cert/3325692202-private.pem.key",
+            "ca_certs": "cert/rootCA.pem",
+            "certfile": "cert/841dbd710a-certificate.pem.crt",
+            "keyfile": "cert/841dbd710a-private.pem.key",
             "tls_version": ssl.PROTOCOL_SSLv23,
             "ciphers": None
         }
@@ -142,35 +136,20 @@ def publish_to_topic(msg):
 
 
 def set_color_light(intent, session):
+    colors = {
+        "red": "15209235",
+        "blue": "1315046",
+        "white": "16777215",
+        "yellow": "14149136"
+    }
     session_attributes = {}
     reprompt_text = None
 
-    status = ''
     if 'Color' in intent['slots']:
         status = intent['slots']['Color']['value']
-    if status == 'red':
-        msg = '{"event": "set_rgb", "action": "15209235"}'
-        print(msg)
+        msg = '{"event": "set_rgb", "action": "' + colors[status] + '"}'
         publish_to_topic(msg)
-        speech_output = "Putting the lights red."
-        should_end_session = True
-    elif status == 'white':
-        msg = '{"event": "set_rgb", "action": "16777215"}'
-        print(msg)
-        publish_to_topic(msg)
-        speech_output = "Putting the lights white."
-        should_end_session = True
-    elif status == 'blue':
-        msg = '{"event": "set_rgb", "action": "1315046"}'
-        print(msg)
-        publish_to_topic(msg)
-        speech_output = "Putting the lights blue."
-        should_end_session = True
-    elif status == 'yellow':
-        msg = '{"event": "set_rgb", "action": "14149136"}'
-        print(msg)
-        publish_to_topic(msg)
-        speech_output = "Putting the lights yellow."
+        speech_output = "Putting the light {}.".format(status)
         should_end_session = True
     else:
         speech_output = "I'm not sure"
@@ -178,26 +157,32 @@ def set_color_light(intent, session):
     return build_response(session_attributes, build_speechlet_response(
         intent['name'], speech_output, reprompt_text, should_end_session))
 
+def set_crazy_light(intent, session):
+    if 'CrazyLight' in intent_name:
+        msg = '{"event": "start_cf", "action": " "1000, 2, 2700, 100, 500, 1,255, 10, 500, 2, 5000, 1"}'
+        publish_to_topic(msg)
+        speech_output = "Putting the light on."
+        should_end_session = True
+    else:
+        speech_output = "I'm not sure"
+        should_end_session = False
 
-def turn_ligth(intent, session):
+    return build_response(session_attributes, build_speechlet_response(
+        intent['name'], speech_output, reprompt_text, should_end_session))
+
+def turn_ligth(intent, intent_name):
     session_attributes = {}
     reprompt_text = None
 
-    status = ''
-    if 'State' in intent['slots']:
-        status = intent['slots']['State']['value']
-
-    if status == 'off':
-        msg = '{"event": "set_power", "action": "off"}'
-        print(msg)
-        publish_to_topic(msg)
-        speech_output = "Putting the lights off."
-        should_end_session = True
-    elif status == 'on':
+    if 'TurnOnLigth' in intent_name:
         msg = '{"event": "set_power", "action": "on"}'
-        print(msg)
         publish_to_topic(msg)
-        speech_output = "Putting the lights on."
+        speech_output = "Putting the light on."
+        should_end_session = True
+    elif 'TurnOffLigth' in intent_name:
+        msg = '{"event": "set_power", "action": "off"}'
+        publish_to_topic(msg)
+        speech_output = "Putting the light off."
         should_end_session = True
     else:
         speech_output = "I'm not sure"
