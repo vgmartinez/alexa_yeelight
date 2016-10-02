@@ -211,7 +211,7 @@ def set_power(idx, action):
     operate_on_bulb(idx, "set_power", params=params)
 
 def set_crazy(idx, action):
-    params = '0, 2, "' + str(action) + '"'
+    params = '0, 0, "' + str(action) + '"'
     logging.info(params)
     operate_on_bulb(idx, "start_cf", params=params)
 
